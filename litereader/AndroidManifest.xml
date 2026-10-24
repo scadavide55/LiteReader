@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.litereader" android:versionCode="1" android:versionName="1.0">
+    <uses-sdk android:minSdkVersion="14" android:targetSdkVersion="15"/>
+    <uses-permission android:name="android.permission.READ_EXTERNAL_STORAGE"/>
+    <uses-feature android:glEsVersion="0x00020000" android:required="true"/>
+    <application android:label="LiteReader" android:icon="@drawable/ic_launcher" android:theme="@android:style/Theme.Holo.NoActionBar" android:allowBackup="true">
+        <activity android:name=".LibraryActivity" android:label="LiteReader">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN"/>
+                <category android:name="android.intent.category.LAUNCHER"/>
+            </intent-filter>
+        </activity>
+        <activity android:name=".BrowserActivity" android:label="File explorer"/>
+        <activity android:name=".ReaderActivity" android:label="LiteReader"
+                  android:theme="@android:style/Theme.Holo.NoActionBar.Fullscreen"
+                  android:configChanges="orientation|screenSize|keyboardHidden">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file" android:mimeType="application/epub+zip"/>
+            </intent-filter>
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW"/>
+                <category android:name="android.intent.category.DEFAULT"/>
+                <data android:scheme="file" android:host="*" android:mimeType="*/*" android:pathPattern=".*\\.epub"/>
+                <data android:pathPattern=".*\\.cbz"/>
+            </intent-filter>
+        </activity>
+    </application>
+</manifest>
