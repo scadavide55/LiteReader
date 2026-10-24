@@ -10,7 +10,8 @@
 # For v1.0.2 Stable
 -Better visualization on phones
 -General optimizations and bug fixes 
-- Testing on these phones / tablets  : Galaxy A37 5g , a20e 
+- Testing on these phones / tablets  : Galaxy A37 5g , a20e
+- Add option to disable that when you click on the borders it turns the page.
 
 # For V1.1.0 Stable
 -Re-imagined and Better and more modern UX while keeping it super light and optimized
