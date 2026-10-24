@@ -1,6 +1,6 @@
 # LiteReader 
 
-Light e-reader for the Kindle Fire HD 8.9" (2012, Android 4.0.4, ARMv7, 1 GB RAM of which about 768 MB is usable). APK about 3.5 MB, no network access, only `READ_EXTERNAL_STORAGE`. Everything below was measured on that tablet with real files; numbers are in `REPORT.md`.
+Light e-reader for old Android devices ( minimum deployment : Android 4 "Ice cream sandwich" , API 14. . APK about 3.5 MB, no network access, only `READ_EXTERNAL_STORAGE`. Everything below was measured on that tablet with real files; numbers are in `REPORT.md`.
 
 ## How to use
 - **Home (library):** recent books with "Page N of M (x%)", then the contents of the `Books` and `Documents` folders (3 levels deep), and a **File explorer** button at the bottom. Long-press a recent book to remove it from the list.
