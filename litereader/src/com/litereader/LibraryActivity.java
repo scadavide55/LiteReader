@@ -1,7 +1,10 @@
 package com.litereader;
 
+import android.Manifest;
 import android.app.Activity;
 import android.content.Intent;
+import android.content.pm.PackageManager;
+import android.os.Build;
 import android.os.Bundle;
 import android.os.Environment;
 import android.graphics.Bitmap;
@@ -65,6 +68,9 @@ public class LibraryActivity extends Activity {
         });
         root.addView(explorer, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 56)));
         setContentView(root);
+        // targetSdk 23+ asks for storage at runtime; on Android 4.0 the install-time grant still applies
+        if (Build.VERSION.SDK_INT >= 23 && checkSelfPermission(Manifest.permission.READ_EXTERNAL_STORAGE) != PackageManager.PERMISSION_GRANTED)
+            requestPermissions(new String[]{Manifest.permission.READ_EXTERNAL_STORAGE}, 1);
     }
 
     @Override

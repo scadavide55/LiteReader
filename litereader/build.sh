@@ -11,7 +11,7 @@ arch -x86_64 /bin/bash -c "$NDK/ndk-build -j4 NDK_PROJECT_PATH=. APP_BUILD_SCRIP
 arch -x86_64 /bin/bash -c "$NDK/ndk-build -j4 NDK_PROJECT_PATH=$PWD/jni_mu_proj NDK_LIBS_OUT=$PWD/libs_mu NDK_OUT=$PWD/obj_mu APP_BUILD_SCRIPT=$PWD/jni_mu/Android.mk NDK_APPLICATION_MK=$PWD/jni_mu/Application.mk" > out/ndk_mu.log 2>&1 || { tail -30 out/ndk_mu.log; exit 1; }
 cp libs/armeabi-v7a/liblrdec.so libs_mu/armeabi-v7a/liblrmu.so out/apk/lib/armeabi-v7a/
 $BT/aapt2 compile --dir res -o out/res/res.zip
-$BT/aapt2 link -o out/base.apk -I $JAR --manifest AndroidManifest.xml -R out/res/res.zip --min-sdk-version 14 --target-sdk-version 15 --version-code 2 --version-name 1.0.1
+$BT/aapt2 link -o out/base.apk -I $JAR --manifest AndroidManifest.xml -R out/res/res.zip --min-sdk-version 14 --target-sdk-version 28 --version-code 2 --version-name 1.0.1
 SRC=src; OUTAPK=LiteReader.apk
 if [ "${SIM:-0}" = "1" ]; then rm -rf out/srcsim && cp -r src out/srcsim && sed -i '' 's/SIM = false/SIM = true/' out/srcsim/com/litereader/BuildFlags.java && SRC=out/srcsim; OUTAPK=LiteReader-sim.apk; fi
 javac --release 8 -Xlint:-options -cp $JAR -d out/classes $(find $SRC -name '*.java')
