@@ -1,0 +1,362 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LiteReader</title>
+<meta name="description" content="LiteReader: a light, fast e-reader for old Android tablets.">
+<meta name="theme-color" content="#0f0f10">
+<style>
+  :root {
+    --bg: #0e0e10; --bg-2: #131316; --panel: #19191d; --line: #2a2a30; --fg: #f4f4f6; --dim: #a3a3ad;
+    --accent: #f0a93a; --accent-2: #ffd27a; --ok: #7bd389;
+    --radius: 16px; --shadow: 0 30px 70px -28px rgba(0,0,0,.7);
+  }
+  @media (prefers-color-scheme: light) {
+    :root { --bg: #f8f7f4; --bg-2: #f1efea; --panel: #ffffff; --line: #e5e2db; --fg: #17171a; --dim: #62626c; --accent: #c77d0a; --accent-2: #e89b26; --ok: #2f8f4e; --shadow: 0 30px 60px -30px rgba(40,30,10,.25); }
+  }
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+  body { margin: 0; background: var(--bg); color: var(--fg); font: 16px/1.65 system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; -webkit-font-smoothing: antialiased; }
+  a { color: var(--accent); }
+  code { font-family: ui-monospace, Menlo, Consolas, monospace; font-size: .9em; background: var(--bg-2); border: 1px solid var(--line); padding: 2px 8px; border-radius: 8px; word-break: break-all; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 24px; }
+
+  /* nav */
+  header.top { position: sticky; top: 0; z-index: 10; backdrop-filter: saturate(1.4) blur(14px); -webkit-backdrop-filter: saturate(1.4) blur(14px); background: color-mix(in srgb, var(--bg) 78%, transparent); border-bottom: 1px solid color-mix(in srgb, var(--line) 70%, transparent); }
+  nav { display: flex; align-items: center; justify-content: space-between; height: 62px; }
+  .brand { display: flex; align-items: center; gap: 10px; font-weight: 800; letter-spacing: .01em; }
+  .logo { width: 30px; height: 30px; border-radius: 9px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); display: grid; place-items: center; color: #111; font-weight: 900; font-size: 16px; box-shadow: 0 6px 16px -6px rgba(240,169,58,.7); }
+  nav .links { display: flex; gap: 22px; align-items: center; font-size: 15px; }
+  nav .links a { color: var(--dim); text-decoration: none; }
+  nav .links a:hover { color: var(--fg); }
+  nav .links .pill { color: #111; background: var(--accent); padding: 7px 14px; border-radius: 999px; font-weight: 700; }
+  nav .links .pill:hover { color: #111; filter: brightness(1.06); }
+
+  /* hero */
+  .hero { background: radial-gradient(900px 460px at 88% -8%, rgba(240,169,58,.20), transparent 60%), radial-gradient(640px 360px at -8% 6%, rgba(255,210,122,.09), transparent 60%); }
+  .hero-grid { display: grid; grid-template-columns: 1.1fr .9fr; gap: 48px; align-items: center; padding: 76px 0 96px; }
+  .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--accent-2); border: 1px solid var(--line); background: var(--panel); padding: 6px 13px; border-radius: 999px; margin-bottom: 20px; }
+  .eyebrow i { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); box-shadow: 0 0 0 4px rgba(123,211,137,.18); }
+  h1 { font-size: clamp(42px, 6.4vw, 68px); line-height: 1.02; margin: 0 0 18px; letter-spacing: -.03em; }
+  h1 span { background: linear-gradient(135deg, var(--accent), var(--accent-2)); -webkit-background-clip: text; background-clip: text; color: transparent; }
+  .lead { color: var(--dim); font-size: 18.5px; margin: 0 0 30px; max-width: 46ch; }
+  .cta { display: flex; flex-wrap: wrap; gap: 14px 18px; align-items: center; }
+  .btn { display: inline-flex; align-items: center; gap: 10px; text-decoration: none; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #111; font-weight: 800; font-size: 17px; padding: 15px 26px; border-radius: 14px; box-shadow: 0 14px 34px -12px rgba(240,169,58,.65); transition: transform .15s ease, box-shadow .15s ease, filter .15s ease; }
+  .btn:hover { transform: translateY(-2px); filter: brightness(1.05); box-shadow: 0 20px 40px -14px rgba(240,169,58,.75); }
+  .btn svg { width: 19px; height: 19px; }
+  .meta { color: var(--dim); font-size: 14px; }
+  .meta strong { color: var(--fg); font-weight: 650; }
+  .stats { display: flex; gap: 28px; margin-top: 34px; flex-wrap: wrap; }
+  .stat b { display: block; font-size: 22px; letter-spacing: -.01em; }
+  .stat span { color: var(--dim); font-size: 13px; }
+
+  /* phone mockup */
+  .stage { position: relative; justify-self: center; width: 290px; }
+  .stage::before { content: ""; position: absolute; inset: 8% -18% -6% -18%; background: radial-gradient(closest-side, rgba(240,169,58,.22), transparent 70%); z-index: 0; }
+  .phone { position: relative; z-index: 1; width: 290px; aspect-ratio: 9 / 18; background: #070708; border: 9px solid #2b2b31; border-radius: 40px; box-shadow: var(--shadow), inset 0 0 0 1px #000; overflow: hidden; display: flex; flex-direction: column; }
+  .phone .head { padding: 16px 16px 8px; font-weight: 800; font-size: 15px; color: #f1f1f4; display: flex; align-items: center; justify-content: space-between; }
+  .phone .head em { font-style: normal; font-size: 10px; font-weight: 700; color: #111; background: var(--accent); padding: 3px 8px; border-radius: 999px; }
+  .phone .sec { padding: 6px 16px 2px; font-size: 9px; letter-spacing: .1em; text-transform: uppercase; color: var(--accent); font-weight: 800; }
+  .shelf { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 12px; padding: 6px 16px 0; }
+  .book { min-width: 0; }
+  .cover { aspect-ratio: 2 / 3; border-radius: 6px; position: relative; overflow: hidden; box-shadow: 0 8px 16px -8px rgba(0,0,0,.7); }
+  .cover::before { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, rgba(0,0,0,.28) 0, transparent 8%, transparent 100%); }
+  .cover i { position: absolute; left: 8px; right: 8px; bottom: 8px; height: 3px; border-radius: 3px; background: rgba(255,255,255,.28); }
+  .cover i::after { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: var(--p, 50%); border-radius: 3px; background: var(--accent); }
+  .c1 { background: linear-gradient(160deg, #f4f4f4, #d3d3d6); }
+  .c2 { background: linear-gradient(160deg, #46598a, #1d2442); }
+  .c3 { background: linear-gradient(160deg, #8a4660, #3d1b2b); }
+  .c4 { background: linear-gradient(160deg, #46896a, #1b3d2b); }
+  .c5 { background: linear-gradient(160deg, #8a7646, #3d3219); }
+  .c6 { background: linear-gradient(160deg, #6a4689, #2a1b3d); }
+  .book .t { margin-top: 5px; font-size: 10.5px; color: #cfcfd6; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .phone .dock { margin-top: auto; padding: 11px 16px 16px; }
+  .phone .dock div { height: 36px; border-radius: 10px; background: #1f1f24; display: grid; place-items: center; font-size: 11px; font-weight: 700; color: #cfcfd6; }
+
+  /* sections */
+  section { padding: 84px 0; }
+  section.alt { background: var(--bg-2); border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
+  .kicker { font-size: 12.5px; letter-spacing: .12em; text-transform: uppercase; color: var(--accent); font-weight: 800; margin: 0 0 10px; }
+  h2 { font-size: clamp(28px, 4vw, 38px); letter-spacing: -.02em; margin: 0 0 10px; line-height: 1.12; }
+  .sub { color: var(--dim); margin: 0 0 38px; max-width: 58ch; font-size: 17px; }
+
+  .features { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; }
+  .card { background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 24px; transition: transform .18s ease, border-color .18s ease; }
+  .card:hover { transform: translateY(-3px); border-color: color-mix(in srgb, var(--accent) 45%, var(--line)); }
+  .card .ic { width: 42px; height: 42px; border-radius: 12px; background: rgba(240,169,58,.13); color: var(--accent); display: grid; place-items: center; margin-bottom: 16px; }
+  .card .ic svg { width: 21px; height: 21px; }
+  .card h3 { margin: 0 0 6px; font-size: 17.5px; letter-spacing: -.005em; }
+  .card p { margin: 0; color: var(--dim); font-size: 15px; }
+
+  .formats { display: grid; grid-template-columns: 1.15fr .85fr; gap: 16px; }
+  .chips { display: flex; flex-wrap: wrap; gap: 10px; }
+  .chip { background: var(--bg-2); border: 1px solid var(--line); border-radius: 12px; padding: 9px 14px; font-size: 14px; color: var(--dim); }
+  .chip b { color: var(--fg); font-weight: 800; margin-right: 8px; letter-spacing: .02em; }
+  .no { margin: 20px 0 0; color: var(--dim); font-size: 14.5px; padding-top: 16px; border-top: 1px dashed var(--line); }
+
+  .steps { display: grid; gap: 14px; counter-reset: s; max-width: 760px; }
+  .step { display: grid; grid-template-columns: 46px 1fr; gap: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); padding: 20px 22px; }
+  .step::before { counter-increment: s; content: counter(s); width: 38px; height: 38px; border-radius: 12px; background: linear-gradient(135deg, var(--accent), var(--accent-2)); color: #111; font-weight: 900; display: grid; place-items: center; }
+  .step h3 { margin: 3px 0 4px; font-size: 17.5px; }
+  .step p { margin: 0; color: var(--dim); font-size: 15px; }
+  .step .file { margin-top: 10px; color: var(--fg); }
+  .ver-pill { color: var(--ok); font-weight: 700; font-size: 13px; margin-left: 6px; }
+
+  .logs { display: grid; gap: 16px; max-width: 760px; }
+  .log h3 { margin: 0; font-size: 19px; display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .log .tag { font-size: 12px; font-weight: 800; color: #111; background: var(--accent); padding: 3px 10px; border-radius: 999px; }
+  .log .date { color: var(--dim); font-size: 13.5px; margin: 4px 0 14px; }
+  .log p { margin: 0 0 8px; color: var(--dim); font-size: 15px; }
+  .log p.h { color: var(--fg); font-weight: 700; margin-top: 12px; }
+  .log ul { margin: 0 0 8px; padding-left: 20px; color: var(--dim); font-size: 15px; }
+  .log li { margin: 3px 0; }
+  .log .more { display: inline-block; margin-top: 8px; font-size: 14px; }
+  .license { color: var(--dim); font-size: 16px; max-width: 68ch; margin: 0; }
+  footer { padding: 30px 0 44px; color: var(--dim); font-size: 14px; border-top: 1px solid var(--line); }
+  footer .wrap { display: flex; justify-content: space-between; flex-wrap: wrap; gap: 10px; }
+
+  .reveal { opacity: 0; transform: translateY(14px); animation: up .7s ease forwards; }
+  .d2 { animation-delay: .1s; } .d3 { animation-delay: .2s; } .d4 { animation-delay: .3s; }
+  @keyframes up { to { opacity: 1; transform: none; } }
+  @media (prefers-reduced-motion: reduce) { .reveal { animation: none; opacity: 1; transform: none; } .btn, .card { transition: none; } html { scroll-behavior: auto; } }
+
+  @media (max-width: 820px) {
+    .hero-grid { grid-template-columns: 1fr; gap: 34px; padding: 44px 0 64px; }
+    .stage { order: -1; width: 240px; } .phone { width: 240px; }
+    .features, .formats { grid-template-columns: 1fr; }
+    section { padding: 58px 0; }
+    nav .links a:not(.pill) { display: none; }
+  }
+</style>
+</head>
+<body>
+
+<header class="top">
+  <div class="wrap">
+    <nav>
+      <div class="brand"><div class="logo">L</div>LiteReader</div>
+      <div class="links">
+        <a href="#features">Features</a>
+        <a href="#formats">Formats</a>
+        <a href="#install">Install</a>
+        <a href="#changelog">Changelog</a>
+        <a href="https://github.com/scadavide55/LiteReader">GitHub</a>
+        <a class="pill" id="nav-dl" href="https://github.com/scadavide55/LiteReader/releases/latest">Download</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<div class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="eyebrow reveal"><i></i>Made for old Android tablets</span>
+      <h1 class="reveal d2">Read fast.<br><span>Read light.</span></h1>
+      <p class="lead reveal d3">A lightweight e-reader for comics, manga, PDF, EPUB and more. Runs on Android 4.0 and newer, with no network access and no accounts.</p>
+      <div class="cta reveal d4">
+        <a id="dl" class="btn" href="https://github.com/scadavide55/LiteReader/releases/latest">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>
+          <span id="dl-text">Download APK</span>
+        </a>
+        <span class="meta" id="meta">Checking latest release…</span>
+      </div>
+      <div class="stats reveal d4">
+        <div class="stat"><b>Android 4.0+</b><span>ARMv7 tablets</span></div>
+        <div class="stat"><b>~3.5 MB</b><span>small install</span></div>
+        <div class="stat"><b>0</b><span>network permissions</span></div>
+      </div>
+    </div>
+
+    <div class="stage reveal d3" aria-hidden="true">
+      <div class="phone">
+        <div class="head">LiteReader <em>Thumbnails</em></div>
+        <div class="sec">Recent</div>
+        <div class="shelf">
+          <div class="book"><div class="cover c1" style="--p:72%"><i></i></div><div class="t">Book title</div></div>
+          <div class="book"><div class="cover c2" style="--p:38%"><i></i></div><div class="t">Another book</div></div>
+          <div class="book"><div class="cover c3" style="--p:90%"><i></i></div><div class="t">A very long book title</div></div>
+          <div class="book"><div class="cover c4" style="--p:15%"><i></i></div><div class="t">Document.pdf</div></div>
+          <div class="book"><div class="cover c5" style="--p:55%"><i></i></div><div class="t">Placeholder</div></div>
+          <div class="book"><div class="cover c6" style="--p:5%"><i></i></div><div class="t">Notes.txt</div></div>
+        </div>
+        <div class="dock"><div>File explorer</div></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<section id="features">
+  <div class="wrap">
+    <p class="kicker">Why LiteReader</p>
+    <h2>Small, quick and private.</h2>
+    <p class="sub">Made for tablets that feel slow everywhere else. Pages turn smoothly and the app keeps its memory use low.</p>
+    <div class="features">
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3M11 8v6M8 11h6"/></svg></div><h3>Smooth pages</h3><p>Pinch zoom, double tap and fast page turns, drawn by a native decoder.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="9" rx="1.5"/><rect x="14" y="3" width="7" height="9" rx="1.5"/><rect x="3" y="15" width="7" height="6" rx="1.5"/><rect x="14" y="15" width="7" height="6" rx="1.5"/></svg></div><h3>Library</h3><p>Recent books with progress and cover thumbnails, plus your Books and Documents folders.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 3h12a1 1 0 0 1 1 1v17l-7-4-7 4V4a1 1 0 0 1 1-1z"/></svg></div><h3>Bookmarks and resume</h3><p>Picks up where you left off, with bookmarks and a page grid for jumping around.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M7 7h13M7 7l3-3M7 7l3 3M17 17H4M17 17l-3-3M17 17l-3 3"/></svg></div><h3>Manga or Normal</h3><p>Right to left or left to right, detected from the file and switchable per book.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="10" width="16" height="11" rx="2"/><path d="M8 10V7a4 4 0 0 1 8 0v3"/></svg></div><h3>Private</h3><p>No network access, no accounts, no ads. Your files stay on the tablet.</p></div>
+      <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8 7l-5 5 5 5M16 7l5 5-5 5M14 4l-4 16"/></svg></div><h3>Open source</h3><p>Source on GitHub under AGPL-3.0, built on MuPDF and libmobi.</p></div>
+    </div>
+  </div>
+</section>
+
+<section id="formats" class="alt">
+  <div class="wrap">
+    <p class="kicker">Supported files</p>
+    <h2>Opens what you already have.</h2>
+    <p class="sub">Other formats show a clear message instead of failing.</p>
+    <div class="formats">
+      <div class="card">
+        <div class="chips">
+          <span class="chip"><b>CBZ</b>comics</span>
+          <span class="chip"><b>EPUB</b>image comics</span>
+          <span class="chip"><b>EPUB</b>text</span>
+          <span class="chip"><b>PDF</b>text and images, up to 2 GB</span>
+          <span class="chip"><b>MOBI</b>no DRM</span>
+          <span class="chip"><b>AZW3</b>no DRM</span>
+          <span class="chip"><b>DOCX</b>up to 15 MB</span>
+          <span class="chip"><b>TXT</b>up to 10 MB</span>
+        </div>
+        <p class="no">Not supported: DRM-protected books, KFX, DjVu, CHM, and old .doc, ODT or RTF.</p>
+      </div>
+      <div class="card">
+        <h3 style="margin:0 0 8px">Reading</h3>
+        <p style="margin:0 0 12px">Tap the Menu tab at the top of the page to open the reading menu. From there you can jump with the page grid, add bookmarks, or switch between Manga and Normal.</p>
+        <p style="margin:0">Your position is saved when you close the app.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <p class="kicker">Install</p>
+    <h2>Three steps.</h2>
+    <p class="sub">Works on Android 4.0 (Ice Cream Sandwich) and newer, on ARMv7 devices.</p>
+    <div class="steps">
+      <div class="step"><div>
+        <h3>Allow installs from this source</h3>
+        <p>On the tablet, open Settings → Security and enable <strong>Unknown sources</strong>.</p>
+      </div></div>
+      <div class="step"><div>
+        <h3>Download the latest release</h3>
+        <p>Download the APK from the latest release and open it on the tablet.</p>
+        <p class="file"><code id="file-name">LiteReader.apk</code><span class="ver-pill" id="file-ver"></span></p>
+      </div></div>
+      <div class="step"><div>
+        <h3>Open LiteReader</h3>
+        <p>Tap Install, then open the app from the launcher.</p>
+      </div></div>
+    </div>
+  </div>
+</section>
+
+<section id="changelog" class="alt">
+  <div class="wrap">
+    <p class="kicker">Latest Changelogs</p>
+    <h2>What changed.</h2>
+    <p class="sub">The two newest releases, loaded from GitHub each time you open this page.</p>
+    <div class="logs" id="logs"><div class="card log"><p>Loading…</p></div></div>
+  </div>
+</section>
+
+<section>
+  <div class="wrap">
+    <p class="kicker">Source and license</p>
+    <h2>Open and inspectable.</h2>
+    <p class="license">The source code is on <a href="https://github.com/scadavide55/LiteReader">GitHub</a>. LiteReader includes MuPDF (AGPL-3.0) and libmobi (LGPL-3.0), so the project is released under AGPL-3.0.</p>
+  </div>
+</section>
+
+<footer>
+  <div class="wrap">
+    <span>LiteReader <span id="foot-ver">latest</span></span>
+    <span><a href="https://github.com/scadavide55/LiteReader/releases">All releases</a></span>
+  </div>
+</footer>
+
+<script>
+(function () {
+  var REPO = 'scadavide55/LiteReader';
+  var RELEASES = 'https://github.com/' + REPO + '/releases/latest';
+  var dl = document.getElementById('dl');
+  var navDl = document.getElementById('nav-dl');
+  var dlText = document.getElementById('dl-text');
+  var meta = document.getElementById('meta');
+  var fileName = document.getElementById('file-name');
+  var fileVer = document.getElementById('file-ver');
+  var footVer = document.getElementById('foot-ver');
+
+  function mb(bytes) { return (bytes / 1048576).toFixed(1) + ' MB'; }
+
+  // Ask GitHub for the newest release on every page load. Both download buttons and the file name follow it.
+  fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
+    cache: 'no-store',
+    headers: { 'Accept': 'application/vnd.github+json' }
+  })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (rel) {
+      var apk = (rel.assets || []).filter(function (a) { return /\.apk$/i.test(a.name); })[0];
+      var ver = rel.tag_name || '';
+      footVer.textContent = ver;
+      if (!apk) { meta.textContent = 'Latest release ' + ver + ' (no APK attached yet)'; return; }
+      [dl, navDl].forEach(function (a) { a.href = apk.browser_download_url; a.setAttribute('download', apk.name); });
+      dlText.textContent = 'Download APK ' + ver;
+      meta.innerHTML = '<strong>' + ver + '</strong> · ' + mb(apk.size) + ' · Android 4.0+';
+      fileName.textContent = apk.name;
+      fileVer.textContent = ver + ' · latest';
+    })
+    .catch(function () {
+      meta.textContent = 'Could not check the latest release. The button opens the releases page.';
+      fileName.textContent = 'the APK from the releases page';
+    });
+  // Changelog: the two newest published releases. Text is inserted with textContent, never as HTML.
+  var logs = document.getElementById('logs');
+  function el(tag, cls, text) { var e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; }
+  function renderBody(box, body) {
+    var lines = (body || '').replace(/\r/g, '').split('\n'), list = null, any = false;
+    lines.forEach(function (raw) {
+      var line = raw.trim();
+      if (!line) { list = null; return; }
+      var li = line.match(/^[-*+]\s+(.*)$/), h = line.match(/^#{1,6}\s*(.*)$/);
+      any = true;
+      if (li) { if (!list) { list = el('ul'); box.appendChild(list); } list.appendChild(el('li', null, li[1])); }
+      else { list = null; box.appendChild(el('p', h ? 'h' : null, h ? h[1] : line)); }
+    });
+    if (!any) box.appendChild(el('p', null, 'No notes for this release.'));
+  }
+  fetch('https://api.github.com/repos/' + REPO + '/releases?per_page=2', {
+    cache: 'no-store',
+    headers: { 'Accept': 'application/vnd.github+json' }
+  })
+    .then(function (r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function (list) {
+      logs.textContent = '';
+      list = list.filter(function (r) { return !r.draft; }).slice(0, 2);
+      if (!list.length) { var c = el('div', 'card log'); c.appendChild(el('p', null, 'No releases yet.')); logs.appendChild(c); return; }
+      list.forEach(function (rel) {
+        var card = el('div', 'card log');
+        var h = el('h3', null, rel.name || rel.tag_name);
+        h.appendChild(el('span', 'tag', rel.tag_name));
+        card.appendChild(h);
+        var d = rel.published_at ? new Date(rel.published_at) : null;
+        card.appendChild(el('div', 'date', d ? d.toLocaleDateString(undefined, { year: 'numeric', month: 'long', day: 'numeric' }) : ''));
+        renderBody(card, rel.body);
+        var a = el('a', 'more', 'View on GitHub'); a.href = rel.html_url;
+        card.appendChild(a);
+        logs.appendChild(card);
+      });
+    })
+    .catch(function () {
+      logs.textContent = '';
+      var c = el('div', 'card log');
+      c.appendChild(el('p', null, 'Could not load the changelog. See all releases on GitHub.'));
+      var a = el('a', 'more', 'Open releases'); a.href = 'https://github.com/' + REPO + '/releases';
+      c.appendChild(a); logs.appendChild(c);
+    });
+})();
+</script>
+</body>
+</html>
