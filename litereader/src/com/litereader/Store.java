@@ -79,8 +79,11 @@ final class Store {
         return !had;
     }
 
-    static boolean rtl(Context c) { return sp(c).getBoolean("rtl", true); }
-    static void setRtl(Context c, boolean v) { sp(c).edit().putBoolean("rtl", v).apply(); }
+    /** Reading direction per book: 0 = not decided yet, 1 = manga (RTL), 2 = normal (LTR). */
+    static int getDir(Context c, String key) { return sp(c).getInt("d." + key, 0); }
+    static void setDir(Context c, String key, int d) { sp(c).edit().putInt("d." + key, d).apply(); }
+    static boolean libGrid(Context c) { return sp(c).getBoolean("libgrid", false); }
+    static void setLibGrid(Context c, boolean v) { sp(c).edit().putBoolean("libgrid", v).commit(); }
     static String lastDir(Context c) { return sp(c).getString("lastdir", null); }
     static void setLastDir(Context c, String d) { sp(c).edit().putString("lastdir", d).apply(); }
 }

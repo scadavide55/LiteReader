@@ -4,8 +4,13 @@ import android.app.Activity;
 import android.content.Intent;
 import android.os.Bundle;
 import android.os.Environment;
+import android.graphics.Bitmap;
+import android.graphics.Color;
+import android.text.TextUtils;
+import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -19,6 +24,9 @@ import java.util.Comparator;
 /** Home screen: recently opened books, then the Books and Documents folders, and a File explorer button. */
 public class LibraryActivity extends Activity {
     LinearLayout list;
+    TextView viewBtn;
+    boolean gridMode;
+    ArrayList<Item> lastRecents; ArrayList<String> lastNames; ArrayList<ArrayList<Item>> lastSections;
     volatile int gen = 0;
 
     @Override
@@ -27,9 +35,22 @@ public class LibraryActivity extends Activity {
         LinearLayout root = new LinearLayout(this);
         root.setOrientation(LinearLayout.VERTICAL);
         root.setBackgroundColor(Ui.BG);
+        gridMode = Store.libGrid(this);
+        LinearLayout head = new LinearLayout(this);
+        head.setOrientation(LinearLayout.HORIZONTAL);
+        head.setGravity(Gravity.CENTER_VERTICAL);
         TextView title = Ui.text(this, "LiteReader", 28, Ui.FG, true);
         title.setPadding(Ui.dp(this, 16), Ui.dp(this, 16), Ui.dp(this, 16), 0);
-        root.addView(title);
+        head.addView(title, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        viewBtn = Ui.button(this, "");
+        viewBtn.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) {
+                gridMode = !gridMode; Store.setLibGrid(LibraryActivity.this, gridMode);
+                if (lastRecents != null) show(lastRecents, lastNames, lastSections);
+            }
+        });
+        head.addView(viewBtn);
+        root.addView(head);
         TextView notice = Ui.text(this, "Opens PDF, EPUB (text or comics), MOBI/AZW3 without DRM, DOCX, TXT and CBZ.", 13, Ui.DIM, false);
         notice.setPadding(Ui.dp(this, 16), Ui.dp(this, 2), Ui.dp(this, 16), Ui.dp(this, 8));
         root.addView(notice);
@@ -106,10 +127,14 @@ public class LibraryActivity extends Activity {
     }
 
     void show(ArrayList<Item> recents, ArrayList<String> names, ArrayList<ArrayList<Item>> sections) {
+        lastRecents = recents; lastNames = names; lastSections = sections;
+        viewBtn.setText(gridMode ? "List" : "Thumbnails");
+        covers++;                                            // invalidates a cover loader still running for the previous layout
+        pendingCovers.clear();
         list.removeAllViews();
         if (!recents.isEmpty()) {
             list.addView(Ui.header(this, "Recent"));
-            for (Item it : recents) addRow(it);
+            addItems(recents);
         }
         for (int i = 0; i < names.size(); i++) {
             list.addView(Ui.header(this, names.get(i)));
@@ -118,13 +143,87 @@ public class LibraryActivity extends Activity {
                 t.setPadding(Ui.dp(this, 16), Ui.dp(this, 6), Ui.dp(this, 16), Ui.dp(this, 6));
                 list.addView(t);
             }
-            for (Item it : sections.get(i)) addRow(it);
+            addItems(sections.get(i));
         }
         if (recents.isEmpty() && names.isEmpty()) {
             TextView t = Ui.text(this, "No Books or Documents folder found on this device.\nUse File explorer to pick a file.", 16, Ui.DIM, false);
             t.setPadding(Ui.dp(this, 16), Ui.dp(this, 24), Ui.dp(this, 16), Ui.dp(this, 6));
             list.addView(t);
         }
+        if (gridMode) loadCovers();
+    }
+
+    volatile int covers = 0;
+    final ArrayList<Object[]> pendingCovers = new ArrayList<Object[]>();   // {Item, ImageView}
+
+    void addItems(ArrayList<Item> items) {
+        if (!gridMode) { for (Item it : items) addRow(it); return; }
+        int cols = Math.max(2, getResources().getDisplayMetrics().widthPixels / Ui.dp(this, 150));
+        for (int i = 0; i < items.size(); i += cols) {
+            LinearLayout row = new LinearLayout(this);
+            row.setOrientation(LinearLayout.HORIZONTAL);
+            row.setPadding(Ui.dp(this, 8), Ui.dp(this, 6), Ui.dp(this, 8), Ui.dp(this, 6));
+            for (int c = 0; c < cols; c++) {
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+                if (i + c < items.size()) row.addView(cell(items.get(i + c)), lp);
+                else row.addView(new View(this), lp);
+            }
+            list.addView(row);
+        }
+    }
+
+    /** one book: white cover box (the first-page thumbnail once the book has been opened) and its name, cut with "..." when too long */
+    View cell(final Item it) {
+        LinearLayout c = new LinearLayout(this);
+        c.setOrientation(LinearLayout.VERTICAL);
+        c.setGravity(Gravity.CENTER_HORIZONTAL);
+        c.setPadding(Ui.dp(this, 8), 0, Ui.dp(this, 8), 0);
+        ImageView img = new ImageView(this);
+        img.setBackgroundColor(Color.WHITE);
+        img.setScaleType(ImageView.ScaleType.FIT_CENTER);
+        c.addView(img, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Ui.dp(this, 170)));
+        TextView name = Ui.text(this, it.title, 14, Ui.FG, false);
+        name.setSingleLine(true); name.setEllipsize(TextUtils.TruncateAt.END);
+        name.setGravity(Gravity.CENTER_HORIZONTAL);
+        name.setPadding(0, Ui.dp(this, 6), 0, 0);
+        c.addView(name, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        c.setOnClickListener(new View.OnClickListener() {
+            public void onClick(View v) { startActivity(new Intent(LibraryActivity.this, ReaderActivity.class).putExtra("path", it.path)); }
+        });
+        if (it.recent) c.setOnLongClickListener(new View.OnLongClickListener() {
+            public boolean onLongClick(View v) { Store.removeRecent(LibraryActivity.this, it.key); refresh(); return true; }
+        });
+        pendingCovers.add(new Object[]{it, img});
+        return c;
+    }
+
+    /** background: first-page thumbnails from the reader's cache, scaled small; the first 150 books only to keep the heap low */
+    void loadCovers() {
+        final int g = covers;
+        final ArrayList<Object[]> work = new ArrayList<Object[]>(pendingCovers);
+        new Thread(new Runnable() {
+            public void run() {
+                int done = 0;
+                for (Object[] w : work) {
+                    if (g != covers || done >= 150) return;
+                    Item it = (Item) w[0];
+                    final ImageView iv = (ImageView) w[1];
+                    try {
+                        String key = it.key != null ? it.key : Store.key(new File(it.path));
+                        File th = new File(getFilesDir(), "th_" + Integer.toHexString(key.hashCode()) + ".bin");
+                        if (!th.isFile()) continue;
+                        Bitmap b = ThumbGrid.readSlot(th, 0);
+                        if (b == null) continue;
+                        int h = Ui.dp(LibraryActivity.this, 170);
+                        final Bitmap s = b.getHeight() > h ? Bitmap.createScaledBitmap(b, Math.max(1, b.getWidth() * h / b.getHeight()), h, true) : b;
+                        if (s != b) b.recycle();
+                        done++;
+                        final int gg = g;
+                        runOnUiThread(new Runnable() { public void run() { if (gg == covers) iv.setImageBitmap(s); } });
+                    } catch (Throwable ignored) {}
+                }
+            }
+        }, "covers").start();
     }
 
     void addRow(final Item it) {

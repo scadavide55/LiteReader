@@ -32,6 +32,9 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
     ReaderView view;
     TextView status, pageText, titleText, markBtn, dirBtn;
     LinearLayout top, bottom;
+    TextView menuTab;
+    ThumbGrid grid;
+    File thumbFile;
     SeekBar seek;
     final Handler ui = new Handler();
     volatile int curPage;
@@ -69,6 +72,10 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
             public void run() {
                 try {
                     final Book bk = Book.open(ReaderActivity.this, f);
+                    if (bk.mu == 0 && Store.getDir(ReaderActivity.this, bk.key) == 0) {
+                        int g = bk.detectDirection();
+                        Store.setDir(ReaderActivity.this, bk.key, g == 1 ? 1 : 2);   // undecided books open as normal (LTR)
+                    }
                     runOnUiThread(new Runnable() { public void run() { init(bk); } });
                 } catch (final Exception e) {
                     runOnUiThread(new Runnable() {
@@ -96,7 +103,8 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
         curPage = start;
         Log.i("LiteReader", "open " + bk.file.getName() + " pages=" + bk.n + " resume at page " + start);
         File th = new File(getFilesDir(), "th_" + Integer.toHexString(bk.key.hashCode()) + ".bin");
-        engine = new Engine(bk, this, th, start, bk.mu != 0 ? false : Store.rtl(this));
+        thumbFile = th;
+        engine = new Engine(bk, this, th, start, bk.mu == 0 && Store.getDir(this, bk.key) == 1);
         view = new ReaderView(this, engine, this);
         root.addView(view, 0);
         if (BuildFlags.SIM) registerSim();
@@ -114,7 +122,7 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
     void buildHud() {
         top = new LinearLayout(this);
         top.setOrientation(LinearLayout.HORIZONTAL);
-        top.setBackgroundColor(0xE6000000);
+        top.setBackgroundColor(0xCC000000);
         top.setGravity(Gravity.CENTER_VERTICAL);
         TextView back = Ui.button(this, "Library");
         back.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { finish(); } });
@@ -126,20 +134,34 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
         markBtn = Ui.button(this, "Mark");
         markBtn.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { toggleMark(); } });
         top.addView(markBtn);
+        TextView thumbs = Ui.button(this, "Thumbnails");
+        thumbs.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showGrid(); } });
+        top.addView(thumbs);
         TextView marks = Ui.button(this, "Bookmarks");
         marks.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { showMarks(); } });
         top.addView(marks);
         dirBtn = Ui.button(this, "");
         dirBtn.setOnClickListener(new View.OnClickListener() {
-            public void onClick(View v) { boolean r = !engine.isRtl(); engine.setRtl(r); Store.setRtl(ReaderActivity.this, r); updateHud(); ui.removeCallbacks(hideRun); ui.postDelayed(hideRun, 4000); }
+            public void onClick(View v) { boolean r = !engine.isRtl(); engine.setRtl(r); Store.setDir(ReaderActivity.this, book.key, r ? 1 : 2); updateHud(); ui.removeCallbacks(hideRun); ui.postDelayed(hideRun, 4000); }
         });
         if (book.mu == 0) top.addView(dirBtn);
+        TextView hide = Ui.button(this, "Hide");
+        hide.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { setHud(false); } });
+        top.addView(hide);
         FrameLayout.LayoutParams tl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP);
         root.addView(top, tl);
 
+        // always-visible menu tab at the top centre: open the menu with one tap, in portrait and landscape
+        menuTab = Ui.button(this, "Menu");
+        menuTab.setBackgroundColor(0xCC000000);
+        menuTab.setTextSize(14);
+        menuTab.setPadding(Ui.dp(this, 22), Ui.dp(this, 6), Ui.dp(this, 22), Ui.dp(this, 6));
+        menuTab.setOnClickListener(new View.OnClickListener() { public void onClick(View v) { setHud(true); } });
+        root.addView(menuTab, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.TOP | Gravity.CENTER_HORIZONTAL));
+
         bottom = new LinearLayout(this);
         bottom.setOrientation(LinearLayout.VERTICAL);
-        bottom.setBackgroundColor(0xE6000000);
+        bottom.setBackgroundColor(0xCC000000);
         bottom.setPadding(Ui.dp(this, 16), Ui.dp(this, 8), Ui.dp(this, 16), Ui.dp(this, 10));
         pageText = Ui.text(this, "", 15, Ui.FG, false);
         pageText.setGravity(Gravity.CENTER_HORIZONTAL);
@@ -158,12 +180,14 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
         FrameLayout.LayoutParams bl = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
         root.addView(bottom, bl);
         top.setVisibility(View.GONE); bottom.setVisibility(View.GONE);
+        menuTab.setVisibility(View.VISIBLE);
     }
 
     void setHud(boolean on) {
         if (top == null) return;
         hud = on;
         top.setVisibility(on ? View.VISIBLE : View.GONE);
+        if (menuTab != null) menuTab.setVisibility(on ? View.GONE : View.VISIBLE);
         bottom.setVisibility(on ? View.VISIBLE : View.GONE);
         ui.removeCallbacks(hideRun);
         if (on) { updateHud(); ui.postDelayed(hideRun, 4000); }
@@ -175,7 +199,7 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
         boolean marked = Store.isBookmarked(this, book.key, p);
         markBtn.setText(marked ? "Marked" : "Mark");
         markBtn.setTextColor(marked ? Ui.ACCENT : Color.WHITE);
-        dirBtn.setText(engine.isRtl() ? "Manga \u2190" : "Fumetto \u2192");
+        dirBtn.setText(engine.isRtl() ? "Manga (RTL)" : "Normal (LTR)");
         if (!seeking) {
             seek.setProgress(p);
             pageText.setText((p + 1) + " / " + book.n + (thumbPct < 100 ? "     previews " + thumbPct + "%" : ""));
@@ -187,6 +211,23 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
         Store.toggleBookmark(this, book.key, curPage);
         updateHud();
         ui.removeCallbacks(hideRun); ui.postDelayed(hideRun, 4000);
+    }
+
+    void showGrid() {
+        if (book == null || grid != null) return;
+        setHud(false);
+        grid = new ThumbGrid(this, book.key, thumbFile, book.n, curPage, thumbPct, new ThumbGrid.Listener() {
+            public void onPick(int page) { engine.requestJump(page); closeGrid(); }
+            public void onClose() { closeGrid(); }
+        });
+        root.addView(grid, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    }
+
+    void closeGrid() {
+        if (grid == null) return;
+        grid.release();
+        root.removeView(grid);
+        grid = null;
     }
 
     void showMarks() {
@@ -236,6 +277,10 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
     @Override
     public boolean onKeyDown(int code, KeyEvent e) {
         if (engine == null) return super.onKeyDown(code, e);
+        if (grid != null) {                                    // thumbnail view open: only Back / Menu act, page-turn keys are ignored
+            if (code == KeyEvent.KEYCODE_BACK || code == KeyEvent.KEYCODE_MENU) closeGrid();
+            return true;
+        }
         boolean rtl = engine.isRtl();
         switch (code) {
             case KeyEvent.KEYCODE_VOLUME_DOWN: engine.requestTurn(1); return true;
@@ -277,6 +322,7 @@ public class ReaderActivity extends Activity implements Engine.Host, ReaderView.
     @Override
     protected void onDestroy() {
         super.onDestroy();
+        closeGrid();
         if (engine != null) engine.stop();
     }
 }

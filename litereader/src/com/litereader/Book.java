@@ -42,6 +42,7 @@ final class Book {
     long[] off; int[] csz, usz, comp;
     long[] raw;               // image MOBI: absolute data offset of each page record (no zip header)
     long mu;                  // MuPDF document handle (PDF, text EPUB, TXT), 0 for image books
+    int dirGuess;             // detected reading direction: 0 = unknown, 1 = manga (RTL), 2 = normal (LTR)
 
     Book(File f, File original) {
         file = f; orig = original; key = Store.key(original);
@@ -378,6 +379,64 @@ final class Book {
             pos += 46 + nl + xl + cl;
         }
         return list;
+    }
+
+    /** Reads the direction the book declares: EPUB spine page-progression-direction, KF8 primary-writing-mode, CBZ ComicInfo.xml. Unknown stays 0. */
+    int detectDirection() {
+        if (raw != null || mu != 0) return 0;
+        RandomAccessFile f = null;
+        try {
+            f = new RandomAccessFile(file, "r");
+            ArrayList<Ent> ents = readDirectory(f);
+            HashMap<String, Integer> byName = new HashMap<String, Integer>();
+            for (int i = 0; i < ents.size(); i++) byName.put(ents.get(i).name, i);
+            Integer ci = byName.get("ComicInfo.xml");
+            if (ci != null) {
+                byte[] x = readSmall(f, ents.get(ci));
+                if (x != null) {
+                    String s = new String(x, "UTF-8");
+                    int a = s.indexOf("<Manga>");
+                    if (a >= 0) {
+                        String v = s.substring(a + 7, Math.min(s.length(), a + 40)).toLowerCase();
+                        if (v.startsWith("yesandrighttoleft")) return 1;
+                        if (v.startsWith("no")) return 2;
+                    }
+                }
+            }
+            if (!byName.containsKey("META-INF/container.xml")) return 0;
+            byte[] cx = readSmall(f, ents.get(byName.get("META-INF/container.xml")));
+            XmlPullParser p = Xml.newPullParser();
+            p.setInput(new ByteArrayInputStream(cx), null);
+            String opfPath = null;
+            for (int ev = p.getEventType(); ev != XmlPullParser.END_DOCUMENT; ev = p.next())
+                if (ev == XmlPullParser.START_TAG && p.getName().endsWith("rootfile")) { opfPath = attr(p, "full-path"); break; }
+            if (opfPath == null) return 0;
+            Integer oi = byName.get(resolve("", opfPath));
+            if (oi == null) return 0;
+            byte[] ox = readSmall(f, ents.get(oi));
+            if (ox == null) return 0;
+            p = Xml.newPullParser();
+            p.setInput(new ByteArrayInputStream(ox), null);
+            int found = 0;
+            for (int ev = p.getEventType(); ev != XmlPullParser.END_DOCUMENT; ev = p.next()) {
+                if (ev != XmlPullParser.START_TAG) continue;
+                String nm = p.getName(); int c = nm.lastIndexOf(':'); if (c >= 0) nm = nm.substring(c + 1);
+                if (nm.equals("spine")) {
+                    String d = attr(p, "page-progression-direction");
+                    if ("rtl".equalsIgnoreCase(d)) return 1;
+                    if ("ltr".equalsIgnoreCase(d)) found = 2;
+                } else if (nm.equals("meta") && "primary-writing-mode".equals(attr(p, "name"))) {
+                    String v = attr(p, "content");
+                    if (v != null && v.toLowerCase().endsWith("-rl")) return 1;
+                    if (v != null && v.toLowerCase().endsWith("-lr") && found == 0) found = 2;
+                }
+            }
+            return found;
+        } catch (Exception e) {
+            return 0;
+        } finally {
+            try { if (f != null) f.close(); } catch (IOException ignored) {}
+        }
     }
 
     static byte[] readSmall(RandomAccessFile f, Ent e) throws IOException {
