@@ -1,4 +1,4 @@
-# LiteReader 1.0 — specifications
+# LiteReader 
 
 Light e-reader for the Kindle Fire HD 8.9" (2012, Android 4.0.4, ARMv7, 1 GB RAM of which about 768 MB is usable). APK about 3.5 MB, no network access, only `READ_EXTERNAL_STORAGE`. Everything below was measured on that tablet with real files; numbers are in `REPORT.md`.
 
