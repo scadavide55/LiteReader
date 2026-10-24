@@ -1,0 +1,14 @@
+*.apk
+*.keystore
+*.jks
+*.o
+*.so
+*.a
+litereader/out/
+litereader/obj/
+litereader/obj_mu/
+litereader/libs/
+litereader/libs_mu/
+litereader/jni_mu/prebuilt/
+litereader/jni_mu_proj/
+.DS_Store
