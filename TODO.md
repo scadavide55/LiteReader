@@ -8,16 +8,16 @@
 
 
 # For v1.0.2 Stable
--Better visualization on phones
--General optimizations and bug fixes 
-- Testing on these phones / tablets  : Galaxy A37 5g , a20e
-- Add option to disable that when you click on the borders it turns the page.
+-Better visualization on phones✅
+-General optimizations and bug fixes ✅
+- Testing on these phones / tablets  : Galaxy A37 5g , a20e , Galaxy tab a9 plus ✅
+- Add option to disable that when you click on the borders it turns the page. ❌
 
 # For V1.1.0 Stable
--Re-imagined and Better and more modern UX while keeping it super light and optimized
--Support for even older devices  ( Maybe as low as android 2.2 froyo)
--more testing 
--Auto-generated  thumbnails for docs that don't have thumbnails 
+-Re-imagined and Better and more modern UX while keeping it super light and optimized❌
+-Support for even older devices  ( Maybe as low as android 2.2 froyo)❌
+-more testing ✅
+-Auto-generated  thumbnails for docs that don't have thumbnails ❌
 
 
 
